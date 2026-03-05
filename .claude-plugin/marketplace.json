@@ -1,0 +1,35 @@
+{
+  "name": "dev-stack-marketplace",
+  "owner": {
+    "name": "Dev-Stack Team",
+    "email": "dev-stack@example.com"
+  },
+  "metadata": {
+    "description": "Intelligent workflow orchestrator for Claude Code with MCP-first tool selection, scope boundaries, and parallel agent execution",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "dev-stack",
+      "source": "./",
+      "description": "Dev-Stack Orchestrator - Intelligent workflow orchestration with MCP-first tool selection",
+      "version": "2.0.0",
+      "author": {
+        "name": "Dev-Stack Team"
+      },
+      "license": "MIT",
+      "keywords": [
+        "orchestration",
+        "workflow",
+        "agents",
+        "tools",
+        "mcp",
+        "scope-boundaries",
+        "parallel-execution"
+      ],
+      "category": "productivity",
+      "homepage": "https://github.com/1827mk/dev-stack",
+      "repository": "https://github.com/1827mk/dev-stack"
+    }
+  ]
+}

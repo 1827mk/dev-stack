@@ -1,0 +1,553 @@
+# Dev-Stack Orchestrator Plugin - Architecture
+
+**Version**: 2.0.0
+**Last Updated**: 2026-03-05
+
+---
+
+## 1. Core Flow
+
+**From Design Document**: `Task Input → Analysis → Capability Selection → Tool Selection → Workflow → Execution → Report`
+
+```
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+│  Task Input  │──▶│   Analysis   │──▶│  Capability  │──▶│    Tool      │
+│              │   │              │   │  Selection   │   │  Selection   │
+└──────────────┘   └──────────────┘   └──────────────┘   └──────┬───────┘
+                                                                │
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐          │
+│    Report    │◀──│  Execution   │◀──│   Workflow   │◀─────────┘
+│              │   │              │   │    Design    │
+└──────────────┘   └──────────────┘   └──────────────┘
+```
+
+---
+
+## 2. Tool Priority System (IMPORTANT)
+
+### 2.1 Priority Hierarchy
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         TOOL SELECTION PRIORITY                             │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  Priority 1: MCP SERVER TOOLS (ALWAYS TRY FIRST)                   │   │
+│   │                                                                     │   │
+│   │  • serena      → Code operations (find_symbol, replace_symbol_body) │   │
+│   │  • filesystem  → File operations (read_text_file, write_file)      │   │
+│   │  • doc-forge   → Documentation (document_reader, format_convert)   │   │
+│   │  • context7    → API docs (query-docs, resolve-library-id)         │   │
+│   │  • memory      → Persistent memory (create_entities, search_nodes) │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                        │
+│                                    │ If unavailable                         │
+│                                    ▼                                        │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  Priority 2: PLUGIN SKILLS (Context-aware operations)              │   │
+│   │                                                                     │   │
+│   │  • task-analysis   → Parse intent, detect scope, estimate          │   │
+│   │  • tool-selection  → Map capability to optimal tool                │   │
+│   │  • workflow-design → Plan execution steps with dependencies        │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                        │
+│                                    │ If skill not applicable               │
+│                                    ▼                                        │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  Priority 3: BUILT-IN TOOLS (LAST RESORT ONLY)                     │   │
+│   │                                                                     │   │
+│   │  • Read, Write, Edit → Basic file operations                       │   │
+│   │  • Bash              → Shell commands                               │   │
+│   │  • Grep, Glob        → Search operations                            │   │
+│   │                                                                     │   │
+│   │  ⚠️  ONLY use when MCP tools are unavailable or task is trivial    │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.2 Tool Selection Decision Flow
+
+```
+                         ┌─────────────────┐
+                         │ Required        │
+                         │ Capability?     │
+                         └────────┬────────┘
+                                  │
+                    ┌─────────────┼─────────────┐
+                    ▼             ▼             ▼
+              ┌──────────┐ ┌──────────┐ ┌──────────┐
+              │read_code │ │write_code│ │read_docs │ ...
+              └────┬─────┘ └────┬─────┘ └────┬─────┘
+                   │            │            │
+                   ▼            ▼            ▼
+              ┌─────────────────────────────────────┐
+              │     Check config/capabilities.yaml   │
+              └─────────────────┬───────────────────┘
+                                │
+                   ┌────────────┼────────────┐
+                   ▼            ▼            ▼
+              ┌─────────┐ ┌─────────┐ ┌─────────┐
+              │MCP Tool │ │MCP N/A  │ │Fallback │
+              │Available│ │         │ │Only     │
+              └────┬────┘ └────┬────┘ └────┬────┘
+                   │           │           │
+                   ▼           ▼           ▼
+              ┌─────────┐ ┌─────────┐ ┌─────────┐
+              │✅ USE    │ │⚠️ WARN  │ │⏺ USE    │
+              │MCP Tool │ │+ Use    │ │Built-in │
+              │(Primary)│ │Fallback │ │(Last)   │
+              └─────────┘ └─────────┘ └─────────┘
+```
+
+### 2.3 Capability Mapping (from capabilities.yaml)
+
+| Category | Capability | Primary (MCP) | Fallback (Built-in) |
+|----------|------------|---------------|---------------------|
+| **CODE** | `read_code` | serena.find_symbol, serena.get_symbols_overview | Read, Grep |
+| **CODE** | `write_code` | serena.replace_symbol_body, serena.insert_after_symbol | Edit, Write |
+| **CODE** | `search_code` | serena.search_for_pattern | Grep, Glob |
+| **CODE** | `analyze_code` | serena.get_symbols_overview | Read |
+| **FILE** | `read_file` | filesystem.read_text_file | Read |
+| **FILE** | `write_file` | filesystem.write_file | Write |
+| **FILE** | `edit_file` | filesystem.edit_file | Edit |
+| **FILE** | `list_dir` | filesystem.list_directory | Bash(ls) |
+| **DOCS** | `read_docs` | doc-forge.document_reader | Read |
+| **DOCS** | `write_docs` | filesystem.write_file | Write |
+| **DOCS** | `read_api_docs` | context7.query-docs | WebSearch |
+| **QUALITY** | `run_tests` | Bash(npm test) | - |
+| **QUALITY** | `run_linter` | Bash(npm run lint) | - |
+| **GIT** | `git_status` | Bash(git status) | - |
+| **GIT** | `git_commit` | Bash(git commit) | - |
+| **MEMORY** | `memory_store` | memory.create_entities, serena.write_memory | Write(file) |
+| **MEMORY** | `memory_recall` | memory.search_nodes, serena.read_memory | Read(file) |
+
+---
+
+## 3. Two Execution Paths
+
+### 3.1 Path 1: Team Orchestrator (`/dev-stack:agents`)
+
+**Use Case**: Complex multi-scope tasks (e.g., "add feature + docs + tests")
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              User Input                                      │
+│              "/dev-stack:agents add feature + docs + tests"                 │
+└─────────────────────────────────┬───────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          SKILL LAYER (Plugin Skills)                        │
+│                                                                              │
+│   ┌────────────────┐   ┌────────────────┐   ┌────────────────┐             │
+│   │ task-analysis  │──▶│ workflow-design│──▶│ tool-selection │             │
+│   │                │   │                │   │                │             │
+│   │ • Parse intent │   │ • Plan steps   │   │ • MCP first    │             │
+│   │ • Detect scope │   │ • Define deps  │   │ • Fallback last│             │
+│   │ • Estimate     │   │ • Templates    │   │ • Warn if      │             │
+│   │                │   │                │   │   using built-in│             │
+│   └────────────────┘   └────────────────┘   └────────────────┘             │
+└─────────────────────────────────┬───────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        AGENT LAYER (orchestrator spawns team)               │
+│                                                                              │
+│                      ┌───────────────┐                                      │
+│                      │  orchestrator │                                      │
+│                      │   (sonnet)    │                                      │
+│                      │               │                                      │
+│                      │ • Analyze     │                                      │
+│                      │ • Select      │                                      │
+│                      │ • Monitor     │                                      │
+│                      │ • Aggregate   │                                      │
+│                      └───────┬───────┘                                      │
+│                              │                                              │
+│              ┌───────────────┼───────────────┐                              │
+│              │               │               │                              │
+│              ▼               ▼               ▼                              │
+│       ┌───────────┐   ┌───────────┐   ┌───────────┐                        │
+│       │  worker   │   │  worker   │   │researcher │  ← Spawned in parallel │
+│       │  (dev)    │   │  (docs)   │   │  (haiku)  │                        │
+│       │           │   │           │   │           │                        │
+│       │ MCP tools │   │ MCP tools │   │ MCP tools │                        │
+│       │ as primary│   │ as primary│   │ as primary│                        │
+│       └───────────┘   └───────────┘   └───────────┘                        │
+└─────────────────────────────────┬───────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         FINAL REPORT                                         │
+│  • Tasks completed  • Files changed  • Tests run  • Commits made             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 Path 2: Scoped Commands (`/dev-stack:dev|git|docs|quality`)
+
+**Use Case**: Simple single-scope tasks (e.g., "fix the login bug")
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              User Input                                      │
+│                   "/dev-stack:dev fix the login bug"                         │
+└─────────────────────────────────┬───────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     SCOPE BOUNDARY CHECK                                     │
+│                                                                              │
+│         ✅ Allowed: Only operations within 'dev' scope                       │
+│         ❌ Blocked: Operations outside scope → Report to user                │
+└─────────────────────────────────┬───────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     TOOL SELECTION (skill)                                   │
+│                                                                              │
+│   ┌────────────────┐   ┌────────────────────────────────────────┐          │
+│   │ tool-selection │──▶│    PRIORITY: MCP → Built-in (last)    │          │
+│   │                │   │                                        │          │
+│   │ • MCP first    │   │  1. Try serena.* for code             │          │
+│   │ • Built-in last│   │  2. Try filesystem.* for files        │          │
+│   │ • Warn if      │   │  3. Try doc-forge.* for docs          │          │
+│   │   fallback     │   │  4. Only then: Read/Write/Edit/Bash   │          │
+│   └────────────────┘   └────────────────────────────────────────┘          │
+└─────────────────────────────────┬───────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     DIRECT EXECUTION (NO Agents)                             │
+│                                                                              │
+│   Execute task directly using selected tools (MCP preferred)                │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.3 Command Comparison
+
+| Aspect | `/dev-stack:agents` | `/dev-stack:dev|git|docs|quality` |
+|--------|---------------------|-----------------------------------|
+| **Spawns Agents** | ✅ Yes (orchestrator → workers) | ❌ No |
+| **Scope** | Multi-scope | Single scope only |
+| **Skills Used** | task-analysis + workflow-design + tool-selection | tool-selection only |
+| **Complexity** | Complex tasks | Simple, scoped tasks |
+| **Use Case** | "Add feature + docs + tests" | "Fix bug in dev scope" |
+
+### 3.4 Other Commands
+
+| Command | Purpose | Skills Used |
+|---------|---------|-------------|
+| `/dev-stack:info` | Display capabilities | None (read-only) |
+| `/dev-stack:simplify` | Task breakdown only | task-analysis only |
+
+---
+
+## 4. Component Overview
+
+### 4.1 Commands (7 total)
+
+| Command | Type | Spawns Agents | Scope | Description |
+|---------|------|---------------|-------|-------------|
+| `/dev-stack:agents` | Team | Yes | Multi | Complex multi-scope orchestration |
+| `/dev-stack:dev` | Scoped | No | dev | Code development only |
+| `/dev-stack:git` | Scoped | No | git | Git operations only |
+| `/dev-stack:docs` | Scoped | No | docs | Documentation only |
+| `/dev-stack:quality` | Scoped | No | quality | Testing/linting only |
+| `/dev-stack:info` | Info | No | - | Display capabilities |
+| `/dev-stack:simplify` | Analysis | No | - | Task breakdown |
+
+### 4.2 Agents (3 total)
+
+| Agent | Model | Tools | Max Turns | Purpose |
+|-------|-------|-------|-----------|---------|
+| orchestrator | sonnet | Agent, Task, Read, Bash | Unlimited | Coordinate complex tasks |
+| worker | sonnet | serena, filesystem, doc-forge, Read, Write, Edit, Bash | 20 | Scoped execution |
+| researcher | haiku | serena.find_symbol, serena.search_for_pattern, Read, Grep, Glob | 10 | Fast codebase exploration |
+
+### 4.3 Skills (3 total)
+
+| Skill | Purpose | Used By |
+|-------|---------|---------|
+| task-analysis | Parse intent, identify capabilities, detect scope | /agents, /simplify |
+| tool-selection | Select optimal tools (MCP first, built-in last) | All scoped commands |
+| workflow-design | Design execution plan with dependencies | /agents |
+
+---
+
+## 5. Scope Boundaries
+
+### 5.1 Scope Definition
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        dev SCOPE                                │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │ Source Code     │  │ Configuration   │  │ Dependencies    │ │
+│  │ .ts, .js, .py   │  │ .json, .yaml    │  │ package.json    │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                        git SCOPE                                │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │ git add         │  │ git commit      │  │ git push        │ │
+│  │ git status      │  │ git branch      │  │ git merge       │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                       docs SCOPE                                │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │ .md files       │  │ API docs        │  │ README          │ │
+│  │ Guides          │  │ Tutorials       │  │ Changelog       │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                      quality SCOPE                              │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │ Unit tests      │  │ Linting         │  │ Type checking   │ │
+│  │ Integration     │  │ Coverage        │  │ Benchmarks      │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 5.2 Boundary Violation Handling
+
+```
+┌─────────────────┐
+│ /dev-stack:dev  │
+│ "commit changes"│
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐     ┌─────────────────┐
+│ Scope Check     │────▶│ VIOLATION:      │
+│                 │     │ "commit" is git │
+└─────────────────┘     │ scope, not dev  │
+                        └────────┬────────┘
+                                 │
+                                 ▼
+                        ┌─────────────────┐
+                        │ Report to user: │
+                        │ "Task requires  │
+                        │ git scope. Use  │
+                        │ /dev-stack:git" │
+                        └─────────────────┘
+```
+
+---
+
+## 6. Context Preservation System
+
+### 6.1 Context Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Session Lifecycle                            │
+│                                                                 │
+│  SessionStart                                                    │
+│       │                                                         │
+│       ▼                                                         │
+│  ┌─────────┐     ┌─────────┐     ┌─────────┐                   │
+│  │ Load    │────▶│ Execute │────▶│ Auto    │                   │
+│  │ Context │     │ Tasks   │     │ Save    │                   │
+│  └─────────┘     └─────────┘     └─────────┘                   │
+│       │              │              │                           │
+│       │              ▼              │                           │
+│       │        ┌─────────┐         │                           │
+│       │        │PreCompact│────────┘                           │
+│       │        │ Trigger  │                                     │
+│       │        └─────────┘                                     │
+│       │                                                         │
+│       ▼                                                         │
+│  Stop                                                            │
+│       │                                                         │
+│       ▼                                                         │
+│  ┌─────────┐                                                    │
+│  │Generate │                                                    │
+│  │ Report  │                                                    │
+│  └─────────┘                                                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 6.2 Context Data Structure
+
+```json
+{
+  "session_id": "uuid",
+  "timestamp": "2026-03-05T10:00:00Z",
+  "task": {
+    "original_input": "fix the login bug",
+    "parsed_intent": "bug_fix",
+    "scope": "dev",
+    "status": "in_progress"
+  },
+  "progress": {
+    "steps_completed": 3,
+    "steps_total": 5,
+    "current_step": "running tests"
+  },
+  "artifacts": {
+    "files_modified": ["src/auth/login.ts"],
+    "tests_run": ["auth.test.ts"],
+    "commits_made": []
+  },
+  "agents": {
+    "spawned": ["worker-001"],
+    "completed": [],
+    "failed": []
+  }
+}
+```
+
+---
+
+## 7. Hook Event Flow
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│SessionStart │     │ PreCompact  │     │    Stop     │
+└──────┬──────┘     └──────┬──────┘     └──────┬──────┘
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│session-     │     │save-        │     │generate-    │
+│start.sh     │     │context.sh   │     │report.sh    │
+└─────────────┘     └─────────────┘     └─────────────┘
+
+┌─────────────┐     ┌─────────────┐
+│SubagentStart│     │ SubagentStop│
+└──────┬──────┘     └──────┬──────┘
+       │                   │
+       ▼                   ▼
+┌─────────────────────────────────┐
+│ track-agent.sh [start|stop]     │
+└─────────────────────────────────┘
+```
+
+---
+
+## 8. File Structure Reference
+
+```
+dev-stack/
+├── .claude-plugin/
+│   └── plugin.json              # Plugin manifest
+│
+├── commands/                    # Slash commands
+│   ├── agents.md                # /dev-stack:agents
+│   ├── dev.md                   # /dev-stack:dev
+│   ├── git.md                   # /dev-stack:git
+│   ├── docs.md                  # /dev-stack:docs
+│   ├── quality.md               # /dev-stack:quality
+│   ├── info.md                  # /dev-stack:info
+│   └── simplify.md              # /dev-stack:simplify
+│
+├── skills/                      # Reusable skills
+│   ├── task-analysis/
+│   │   └── SKILL.md
+│   ├── tool-selection/
+│   │   └── SKILL.md
+│   └── workflow-design/
+│       └── SKILL.md
+│
+├── agents/                      # Subagents
+│   ├── orchestrator.md
+│   ├── worker.md
+│   └── researcher.md
+│
+├── hooks/
+│   └── hooks.json               # Hook configuration
+│
+├── scripts/                     # Hook scripts
+│   ├── session-start.sh
+│   ├── save-context.sh
+│   ├── track-agent.sh
+│   └── generate-report.sh
+│
+├── config/                      # Configuration
+│   ├── capabilities.yaml        # Tool capability mapping
+│   └── plugin.yaml              # Plugin settings
+│
+└── context/                     # Context storage
+    └── .gitkeep
+```
+
+---
+
+## 9. Integration Points
+
+### 9.1 MCP Server Dependencies (Primary Tools)
+
+| MCP Server | Tools Used | Required For | Priority |
+|------------|------------|--------------|----------|
+| **serena** | find_symbol, replace_symbol_body, search_for_pattern, get_symbols_overview, insert_after_symbol, rename_symbol | Code operations | 1 (Primary) |
+| **filesystem** | read_text_file, write_file, list_directory, edit_file, read_multiple_files | File operations | 1 (Primary) |
+| **doc-forge** | document_reader, docx_to_pdf, html_to_markdown, format_convert | Documentation | 1 (Primary) |
+| **context7** | query-docs, resolve-library-id | API documentation | 1 (Primary) |
+| **memory** | create_entities, search_nodes, add_observations | Persistent memory | 1 (Primary) |
+
+### 9.2 Built-in Tools (Fallback Only)
+
+| Tool | Used For | When Used |
+|------|----------|-----------|
+| Read | Read files | MCP filesystem unavailable |
+| Write | Write files | MCP filesystem unavailable |
+| Edit | Edit files | MCP filesystem unavailable |
+| Bash | Shell commands | Git, npm, pytest |
+| Grep | Search content | MCP serena unavailable |
+| Glob | Find files | MCP serena unavailable |
+| WebSearch | Web search | MCP context7 unavailable |
+
+### 9.3 External Tool Dependencies
+
+| Tool | Purpose | Required |
+|------|---------|----------|
+| git | Version control | Yes |
+| npm/node | Running tests, linting | If using Node.js |
+| bash | Script execution | Yes |
+
+---
+
+## 10. Error Handling Strategy
+
+### 10.1 Error Categories
+
+| Category | Example | Handling |
+|----------|---------|----------|
+| MCP Tool Not Available | serena server offline | Use fallback tool + warning |
+| Scope Violation | /dev trying to commit | Report + suggest correct command |
+| Agent Failure | Worker timeout | Retry with simpler task |
+| Context Corruption | Invalid JSON | Reset context, notify user |
+
+### 10.2 Error Response Format
+
+```
+❌ Error: [Category] - [Message]
+
+Details:
+- What happened: [description]
+- Why it happened: [root cause]
+- How to fix: [suggested action]
+
+Example:
+❌ Error: Scope Violation - Cannot perform git operations
+
+Details:
+- What happened: /dev-stack:dev command attempted to run 'git commit'
+- Why it happened: 'git commit' is outside the 'dev' scope boundary
+- How to fix: Use '/dev-stack:git commit' instead
+```
+
+---
+
+## 11. Success Criteria
+
+| ID | Criteria | Target |
+|----|----------|--------|
+| SC-001 | Tool selection accuracy (MCP first) | >= 90% |
+| SC-002 | Scoped commands boundary compliance | 100% |
+| SC-003 | Multi-scope agent spawning accuracy | 100% |
+| SC-004 | Report completeness | 100% |
+| SC-005 | Context restoration success rate | >= 95% |
+| SC-006 | Agent tracking accuracy | 100% |

@@ -1,0 +1,362 @@
+# Dev-Stack Capability Mapping v2.0
+# Maps human-readable capabilities to actual tools
+# Priority: Primary (MCP) → Fallback (Built-in)
+
+version: "2.0"
+
+# =============================================================================
+# CODE OPERATIONS - Use serena MCP as primary
+# =============================================================================
+code:
+  read_code:
+    description: "Read and analyze code symbols"
+    primary:
+      - tool: "mcp__serena__find_symbol"
+        when: "Need specific symbol (function, class, method)"
+      - tool: "mcp__serena__get_symbols_overview"
+        when: "Need file structure overview"
+      - tool: "mcp__serena__find_file"
+        when: "Need to locate file by pattern"
+    fallback:
+      - tool: "Read"
+        when: "MCP unavailable or need full file"
+      - tool: "Grep"
+        when: "Need to search content"
+
+  write_code:
+    description: "Write or modify code"
+    primary:
+      - tool: "mcp__serena__replace_symbol_body"
+        when: "Replace entire symbol definition"
+      - tool: "mcp__serena__insert_after_symbol"
+        when: "Add code after existing symbol"
+      - tool: "mcp__serena__insert_before_symbol"
+        when: "Add imports or code before symbol"
+      - tool: "mcp__serena__rename_symbol"
+        when: "Rename symbol across codebase"
+    fallback:
+      - tool: "Edit"
+        when: "String-based file editing"
+      - tool: "Write"
+        when: "Create new file or full rewrite"
+
+  search_code:
+    description: "Search patterns in codebase"
+    primary:
+      - tool: "mcp__serena__search_for_pattern"
+        when: "Regex search in codebase"
+      - tool: "mcp__serena__find_referencing_symbols"
+        when: "Find all references to symbol"
+    fallback:
+      - tool: "Grep"
+        when: "Content search"
+      - tool: "Glob"
+        when: "File pattern search"
+
+  analyze_code:
+    description: "Analyze code structure and quality"
+    primary:
+      - tool: "mcp__serena__get_symbols_overview"
+        when: "Get file structure"
+      - tool: "mcp__serena__think_about_collected_information"
+        when: "Evaluate completeness"
+    fallback:
+      - tool: "Read"
+        when: "Manual analysis"
+
+# =============================================================================
+# FILE OPERATIONS - Use filesystem MCP as primary
+# =============================================================================
+file:
+  read_file:
+    description: "Read file contents"
+    primary:
+      - tool: "mcp__filesystem__read_text_file"
+        when: "Read single text file"
+      - tool: "mcp__filesystem__read_multiple_files"
+        when: "Read multiple files at once"
+    fallback:
+      - tool: "Read"
+        when: "Built-in file reader"
+
+  write_file:
+    description: "Write file contents"
+    primary:
+      - tool: "mcp__filesystem__write_file"
+        when: "Write content to file"
+    fallback:
+      - tool: "Write"
+        when: "Built-in file writer"
+
+  edit_file:
+    description: "Edit file with line-based operations"
+    primary:
+      - tool: "mcp__filesystem__edit_file"
+        when: "Line-based editing"
+    fallback:
+      - tool: "Edit"
+        when: "String replacement editing"
+
+  list_dir:
+    description: "List directory contents"
+    primary:
+      - tool: "mcp__filesystem__list_directory"
+        when: "Simple directory listing"
+      - tool: "mcp__filesystem__directory_tree"
+        when: "Recursive tree view"
+      - tool: "mcp__filesystem__list_directory_with_sizes"
+        when: "Need file sizes"
+    fallback:
+      - tool: "Bash"
+        args: "ls -la"
+        when: "MCP unavailable"
+
+  find_file:
+    description: "Find files by pattern"
+    primary:
+      - tool: "mcp__filesystem__search_files"
+        when: "Glob pattern search"
+      - tool: "mcp__serena__find_file"
+        when: "Code-aware file search"
+    fallback:
+      - tool: "Glob"
+        when: "Built-in glob"
+
+# =============================================================================
+# DOCUMENTATION OPERATIONS - Use doc-forge MCP as primary
+# =============================================================================
+docs:
+  read_docs:
+    description: "Read various document formats"
+    primary:
+      - tool: "mcp__doc-forge__document_reader"
+        when: "PDF, DOCX, HTML, CSV files"
+      - tool: "mcp__doc-forge__excel_read"
+        when: "Excel files"
+    fallback:
+      - tool: "Read"
+        when: "Text-based docs"
+
+  write_docs:
+    description: "Write documentation"
+    primary:
+      - tool: "mcp__doc-forge__format_convert"
+        when: "Convert between formats"
+      - tool: "mcp__filesystem__write_file"
+        when: "Write markdown/text"
+    fallback:
+      - tool: "Write"
+        when: "Direct file write"
+
+  convert_docs:
+    description: "Convert between document formats"
+    primary:
+      - tool: "mcp__doc-forge__docx_to_html"
+        when: "DOCX to HTML"
+      - tool: "mcp__doc-forge__docx_to_pdf"
+        when: "DOCX to PDF"
+      - tool: "mcp__doc-forge__html_to_markdown"
+        when: "HTML to Markdown"
+      - tool: "mcp__doc-forge__html_to_text"
+        when: "HTML to plain text"
+    fallback:
+      - tool: "Write"
+        when: "Manual conversion"
+
+  read_api_docs:
+    description: "Query library documentation"
+    primary:
+      - tool: "mcp__context7__resolve-library-id"
+        when: "Find library ID first"
+      - tool: "mcp__context7__query-docs"
+        when: "Query documentation"
+    fallback:
+      - tool: "WebSearch"
+        when: "Web search for docs"
+      - tool: "mcp__fetch__fetch"
+        when: "Fetch documentation URL"
+
+# =============================================================================
+# QUALITY ASSURANCE - Use Bash (no MCP available)
+# =============================================================================
+quality:
+  run_tests:
+    description: "Execute test suite"
+    primary:
+      - tool: "Bash"
+        args: "npm test"
+        when: "Node.js project"
+      - tool: "Bash"
+        args: "pytest"
+        when: "Python project"
+    fallback: []
+
+  run_linter:
+    description: "Run code linter"
+    primary:
+      - tool: "Bash"
+        args: "npm run lint"
+        when: "Node.js with lint script"
+      - tool: "Bash"
+        args: "eslint ."
+        when: "Direct eslint"
+    fallback: []
+
+  check_coverage:
+    description: "Check test coverage"
+    primary:
+      - tool: "Bash"
+        args: "npm run coverage"
+        when: "Coverage script available"
+    fallback: []
+
+# =============================================================================
+# GIT OPERATIONS - Use Bash (no MCP available)
+# =============================================================================
+git:
+  status:
+    description: "Check git status"
+    primary:
+      - tool: "Bash"
+        args: "git status"
+    fallback: []
+
+  diff:
+    description: "Show git diff"
+    primary:
+      - tool: "Bash"
+        args: "git diff"
+    fallback: []
+
+  commit:
+    description: "Commit changes"
+    primary:
+      - tool: "Bash"
+        args: "git commit"
+    fallback: []
+
+  add:
+    description: "Stage changes"
+    primary:
+      - tool: "Bash"
+        args: "git add"
+    fallback: []
+
+  push:
+    description: "Push to remote"
+    primary:
+      - tool: "Bash"
+        args: "git push"
+    fallback: []
+
+  branch:
+    description: "Branch operations"
+    primary:
+      - tool: "Bash"
+        args: "git branch"
+    fallback: []
+
+# =============================================================================
+# MEMORY OPERATIONS - Use memory MCP as primary
+# =============================================================================
+memory:
+  store:
+    description: "Store persistent memory"
+    primary:
+      - tool: "mcp__memory__create_entities"
+        when: "Create new entities"
+      - tool: "mcp__memory__add_observations"
+        when: "Add to existing entities"
+      - tool: "mcp__serena__write_memory"
+        when: "Project-specific memory"
+    fallback:
+      - tool: "Write"
+        when: "Write to local file"
+
+  recall:
+    description: "Recall stored memory"
+    primary:
+      - tool: "mcp__memory__search_nodes"
+        when: "Search memory"
+      - tool: "mcp__memory__read_graph"
+        when: "Read entire graph"
+      - tool: "mcp__serena__read_memory"
+        when: "Project-specific memory"
+    fallback:
+      - tool: "Read"
+        when: "Read from local file"
+
+# =============================================================================
+# WEB OPERATIONS - Use fetch MCP as primary
+# =============================================================================
+web:
+  fetch:
+    description: "Fetch web content"
+    primary:
+      - tool: "mcp__fetch__fetch"
+        when: "Fetch URL content"
+      - tool: "mcp__web_reader__webReader"
+        when: "Read and convert to markdown"
+    fallback:
+      - tool: "WebSearch"
+        when: "Search for content"
+
+# =============================================================================
+# SCOPE DEFINITIONS
+# =============================================================================
+scopes:
+  dev:
+    description: "Code development scope"
+    allowed_capabilities:
+      - code.read_code
+      - code.write_code
+      - code.search_code
+      - code.analyze_code
+      - file.read_file
+      - file.write_file
+      - file.edit_file
+      - file.list_dir
+      - file.find_file
+    blocked_operations:
+      - git.*
+      - quality.run_tests
+
+  git:
+    description: "Git operations scope"
+    allowed_capabilities:
+      - git.status
+      - git.diff
+      - git.commit
+      - git.add
+      - git.push
+      - git.branch
+    blocked_operations:
+      - code.write_code
+      - file.write_file
+      - file.edit_file
+
+  docs:
+    description: "Documentation scope"
+    allowed_capabilities:
+      - docs.read_docs
+      - docs.write_docs
+      - docs.convert_docs
+      - docs.read_api_docs
+      - file.read_file
+      - file.write_file
+    blocked_operations:
+      - code.write_code
+      - git.*
+
+  quality:
+    description: "Quality assurance scope"
+    allowed_capabilities:
+      - quality.run_tests
+      - quality.run_linter
+      - quality.check_coverage
+      - code.read_code
+      - code.search_code
+    blocked_operations:
+      - code.write_code
+      - file.write_file
+      - git.*

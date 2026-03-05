@@ -1,0 +1,123 @@
+# Dev-Stack Plugin Settings v2.0
+# Configuration for plugin behavior
+
+version: "2.0"
+
+# Plugin Information
+plugin:
+  name: "dev-stack"
+  display_name: "Dev-Stack Orchestrator"
+  description: "Intelligent workflow orchestrator with MCP-first tool selection"
+
+# Tool Priority Configuration
+tool_priority:
+  # Priority 1: MCP Server Tools (ALWAYS TRY FIRST)
+  mcp:
+    enabled: true
+    servers:
+      - name: "serena"
+        priority: 1
+        capabilities: ["code", "memory"]
+      - name: "filesystem"
+        priority: 1
+        capabilities: ["file"]
+      - name: "doc-forge"
+        priority: 1
+        capabilities: ["docs"]
+      - name: "context7"
+        priority: 1
+        capabilities: ["api_docs"]
+      - name: "memory"
+        priority: 1
+        capabilities: ["memory"]
+      - name: "fetch"
+        priority: 1
+        capabilities: ["web"]
+
+  # Priority 2: Plugin Skills
+  skills:
+    enabled: true
+    priority: 2
+    available:
+      - "task-analysis"
+      - "tool-selection"
+      - "workflow-design"
+
+  # Priority 3: Built-in Tools (LAST RESORT)
+  builtin:
+    enabled: true
+    priority: 3
+    tools:
+      - "Read"
+      - "Write"
+      - "Edit"
+      - "Bash"
+      - "Grep"
+      - "Glob"
+      - "WebSearch"
+    warning:
+      enabled: true
+      message: "⚠️ Using built-in tool as fallback. MCP tool unavailable."
+
+# Agent Configuration
+agents:
+  orchestrator:
+    model: "sonnet"
+    max_turns: -1  # Unlimited
+    temperature: 0.3
+    
+  worker:
+    model: "sonnet"
+    max_turns: 20
+    temperature: 0.3
+    scope_enforcement: strict
+    
+  researcher:
+    model: "haiku"
+    max_turns: 10
+    temperature: 0.2
+    read_only: true
+
+# Scope Configuration
+scopes:
+  dev:
+    color: "#4CAF50"
+    icon: "💻"
+    strict_boundaries: true
+    
+  git:
+    color: "#FF9800"
+    icon: "📦"
+    strict_boundaries: true
+    
+  docs:
+    color: "#2196F3"
+    icon: "📄"
+    strict_boundaries: true
+    
+  quality:
+    color: "#9C27B0"
+    icon: "✅"
+    strict_boundaries: true
+
+# Context Preservation
+context:
+  enabled: true
+  storage_path: "./context"
+  auto_save_on_compact: true
+  auto_restore_on_start: true
+  max_context_size_mb: 10
+
+# Report Configuration
+report:
+  enabled: true
+  include_tool_usage: true
+  include_mcp_vs_builtin_stats: true
+  output_format: "markdown"
+
+# Logging Configuration
+logging:
+  level: "info"
+  log_tool_selection: true
+  log_fallback_usage: true
+  log_scope_violations: true
