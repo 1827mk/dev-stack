@@ -22,8 +22,5 @@
     "thai"
   ],
   "homepage": "https://github.com/1827mk/dev-stack",
-  "repository": "https://github.com/1827mk/dev-stack",
-  "agents": "./agents",
-  "skills": "./skills",
-  "hooks": "./hooks"
+  "repository": "https://github.com/1827mk/dev-stack"
 }
