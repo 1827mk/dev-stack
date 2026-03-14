@@ -1,0 +1,29 @@
+{
+  "name": "orchestrator",
+  "version": "6.0.0",
+  "description": "Meta-orchestrator with THINK → RESEARCH → GROUND → BUILD → VERIFY workflow. Early exit for simple tasks, cached onboarding, bounded iterations.",
+  "author": {
+    "name": "1827mk",
+    "email": "[email protected]",
+    "url": "https://github.com/1827mk"
+  },
+  "license": "MIT",
+  "keywords": [
+    "orchestrator",
+    "meta-orchestrator",
+    "thinking",
+    "research",
+    "agents",
+    "workflow",
+    "verify",
+    "enterprise",
+    "natural-language",
+    "context-aware",
+    "thai"
+  ],
+  "homepage": "https://github.com/1827mk/dev-stack",
+  "repository": "https://github.com/1827mk/dev-stack",
+  "agents": "./agents",
+  "skills": "./skills",
+  "hooks": "./hooks"
+}

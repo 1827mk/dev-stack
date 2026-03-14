@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "protected_paths": [
+    ".env",
+    ".env.local",
+    ".env.*.local",
+    "**/secrets/**",
+    "**/credentials/**",
+    "**/.credentials",
+    "**/migrations/**",
+    ".git/**",
+    "**/*.pem",
+    "**/*.key",
+    "**/id_rsa*",
+    "**/auth.json",
+    "**/token*",
+    "**/api_key*"
+  ],
+  "dangerous_commands": [
+    "rm -rf /",
+    "rm -rf ~",
+    "rm -rf *",
+    "mkfs",
+    "dd if=",
+    ":(){:|:&};:",
+    "chmod -R 777 /",
+    "curl | bash",
+    "wget | bash"
+  ],
+  "scope_boundaries": {
+    "allow_git_operations": true,
+    "allow_network_operations": true,
+    "allow_file_deletion": false,
+    "max_file_size_mb": 10
+  },
+  "notifications": {
+    "on_protected_access": true,
+    "on_dangerous_command": true,
+    "on_scope_violation": true
+  }
+}

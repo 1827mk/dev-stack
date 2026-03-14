@@ -1,0 +1,322 @@
+# ══════════════════════════════════════════════════════════════
+# CAPABILITY REGISTRY — dev-stack plugin v6
+# ══════════════════════════════════════════════════════════════
+# Single source of truth for all tool/skill names.
+# Update a tool name here → zero agent files need editing.
+#
+# FORMAT:
+#   primary:     preferred tool (use this first)
+#   fallback:    use if primary unavailable — "none" means skip + notify user
+#   description: what this does
+#   timeout_s:   agent should escalate if step exceeds this (seconds)
+#   requires_guard: whether security guard is required
+# ══════════════════════════════════════════════════════════════
+
+version: "1.0"
+
+capabilities:
+  # ── CODE INTELLIGENCE ──────────────────────────────────────
+  code.scan:
+    primary: "serena:onboarding"
+    fallback: "mcp__filesystem__directory_tree"
+    description: "Full codebase scan for understanding structure"
+    timeout_s: 120
+    requires_guard: false
+
+  code.symbols:
+    primary: "serena:get_symbols_overview"
+    fallback: "LSP.documentSymbol"
+    description: "List symbols (classes, functions) in a file"
+    timeout_s: 30
+    requires_guard: false
+
+  code.find_symbol:
+    primary: "serena:find_symbol"
+    fallback: "Grep"
+    description: "Find a specific symbol across codebase"
+    timeout_s: 30
+    requires_guard: false
+
+  code.references:
+    primary: "serena:find_referencing_symbols"
+    fallback: "LSP.findReferences"
+    description: "Find all usages of a symbol"
+    timeout_s: 30
+    requires_guard: false
+
+  code.read:
+    primary: "serena:find_symbol"
+    fallback: "Read"
+    description: "Read symbol body or file content"
+    timeout_s: 30
+    requires_guard: false
+
+  code.edit:
+    primary: "serena:replace_symbol_body"
+    fallback: "Edit"
+    description: "Edit code at symbol level"
+    timeout_s: 60
+    requires_guard: true
+
+  code.insert_before:
+    primary: "serena:insert_before_symbol"
+    fallback: "Edit"
+    description: "Insert code before a symbol"
+    timeout_s: 60
+    requires_guard: true
+
+  code.insert_after:
+    primary: "serena:insert_after_symbol"
+    fallback: "Edit"
+    description: "Insert code after a symbol"
+    timeout_s: 60
+    requires_guard: true
+
+  code.rename:
+    primary: "serena:rename_symbol"
+    fallback: "Edit"
+    description: "Rename a symbol across codebase"
+    timeout_s: 120
+    requires_guard: true
+
+  code.search:
+    primary: "serena:search_for_pattern"
+    fallback: "Grep"
+    description: "Search for patterns in codebase"
+    timeout_s: 60
+    requires_guard: false
+
+  # ── FILESYSTEM ─────────────────────────────────────────────
+  file.read:
+    primary: "Read"
+    fallback: "mcp__filesystem__read_text_file"
+    description: "Read file contents"
+    timeout_s: 30
+    requires_guard: false
+
+  file.write:
+    primary: "Write"
+    fallback: "mcp__filesystem__write_file"
+    description: "Write new file or overwrite existing"
+    timeout_s: 60
+    requires_guard: true
+
+  file.edit:
+    primary: "Edit"
+    fallback: "mcp__filesystem__edit_file"
+    description: "Edit existing file with string replacement"
+    timeout_s: 60
+    requires_guard: true
+
+  file.list:
+    primary: "Glob"
+    fallback: "mcp__filesystem__list_directory"
+    description: "List files matching pattern"
+    timeout_s: 30
+    requires_guard: false
+
+  file.tree:
+    primary: "mcp__filesystem__directory_tree"
+    fallback: "Bash:find . -type f"
+    description: "Get directory tree structure"
+    timeout_s: 30
+    requires_guard: false
+
+  file.search:
+    primary: "Grep"
+    fallback: "mcp__filesystem__search_files"
+    description: "Search file contents"
+    timeout_s: 60
+    requires_guard: false
+
+  file.info:
+    primary: "mcp__filesystem__get_file_info"
+    fallback: "Bash:ls -la"
+    description: "Get file metadata"
+    timeout_s: 10
+    requires_guard: false
+
+  # ── EXECUTION ──────────────────────────────────────────────
+  exec.bash:
+    primary: "Bash"
+    fallback: "none"
+    description: "Execute shell commands"
+    timeout_s: 300
+    requires_guard: true
+
+  exec.code:
+    primary: "mcp__ide__executeCode"
+    fallback: "none"
+    description: "Execute code in Jupyter kernel"
+    timeout_s: 120
+    requires_guard: false
+
+  # ── MEMORY & PATTERNS ─────────────────────────────────────
+  memory.search:
+    primary: "mcp__memory__search_nodes"
+    fallback: "Grep:.dev-stack/memory/"
+    description: "Search learned patterns in memory graph"
+    timeout_s: 30
+    requires_guard: false
+
+  memory.read:
+    primary: "mcp__memory__read_graph"
+    fallback: "Read:.dev-stack/memory/"
+    description: "Read entire memory graph"
+    timeout_s: 30
+    requires_guard: false
+
+  memory.create:
+    primary: "mcp__memory__create_entities"
+    fallback: "Write:.dev-stack/memory/"
+    description: "Create new memory entities"
+    timeout_s: 30
+    requires_guard: false
+
+  # ── THINKING ───────────────────────────────────────────────
+  think.sequential:
+    primary: "mcp__sequentialthinking__sequentialthinking"
+    fallback: "none"
+    description: "Sequential thinking for complex problems"
+    timeout_s: 120
+    requires_guard: false
+
+  # ── WEB & DOCS ─────────────────────────────────────────────
+  web.search:
+    primary: "WebSearch"
+    fallback: "none"
+    description: "Search the web for information"
+    timeout_s: 60
+    requires_guard: false
+
+  web.fetch:
+    primary: "mcp__fetch__fetch"
+    fallback: "mcp__web_reader__webReader"
+    description: "Fetch web page content"
+    timeout_s: 60
+    requires_guard: false
+
+  docs.query:
+    primary: "mcp__context7__query-docs"
+    fallback: "web.search"
+    description: "Query library documentation"
+    timeout_s: 60
+    requires_guard: false
+
+  docs.resolve:
+    primary: "mcp__context7__resolve-library-id"
+    fallback: "web.search"
+    description: "Resolve library ID for docs"
+    timeout_s: 30
+    requires_guard: false
+
+  # ── SERENA PROJECT ─────────────────────────────────────────
+  serena.activate:
+    primary: "mcp__serena__activate_project"
+    fallback: "none"
+    description: "Activate Serena project for code intelligence"
+    timeout_s: 30
+    requires_guard: false
+
+  serena.check_onboarding:
+    primary: "mcp__serena__check_onboarding_performed"
+    fallback: "none"
+    description: "Check if Serena onboarding was performed"
+    timeout_s: 10
+    requires_guard: false
+
+  serena.onboarding:
+    primary: "mcp__serena__onboarding"
+    fallback: "none"
+    description: "Run Serena project onboarding"
+    timeout_s: 120
+    requires_guard: false
+
+  serena.initial_instructions:
+    primary: "mcp__serena__initial_instructions"
+    fallback: "none"
+    description: "Get Serena instructions manual"
+    timeout_s: 10
+    requires_guard: false
+
+  serena.think_collected:
+    primary: "mcp__serena__think_about_collected_information"
+    fallback: "think.sequential"
+    description: "Think about collected information"
+    timeout_s: 60
+    requires_guard: false
+
+  serena.think_task:
+    primary: "mcp__serena__think_about_task_adherence"
+    fallback: "think.sequential"
+    description: "Think about task adherence"
+    timeout_s: 60
+    requires_guard: false
+
+  serena.think_done:
+    primary: "mcp__serena__think_about_whether_you_are_done"
+    fallback: "none"
+    description: "Check if task is complete"
+    timeout_s: 10
+    requires_guard: false
+
+  # ── PROJECT DNA ────────────────────────────────────────────
+  dna.read:
+    primary: "Read:.dev-stack/dna/project.md"
+    fallback: "none"
+    description: "Read project DNA"
+    timeout_s: 10
+    requires_guard: false
+
+  dna.write:
+    primary: "Write:.dev-stack/dna/project.md"
+    fallback: "none"
+    description: "Write project DNA"
+    timeout_s: 30
+    requires_guard: true
+
+  # ── CHECKPOINT ─────────────────────────────────────────────
+  checkpoint.read:
+    primary: "Read:.dev-stack/memory/checkpoint.md"
+    fallback: "none"
+    description: "Read session checkpoint"
+    timeout_s: 10
+    requires_guard: false
+
+  checkpoint.write:
+    primary: "Write:.dev-stack/memory/checkpoint.md"
+    fallback: "none"
+    description: "Write session checkpoint"
+    timeout_s: 30
+    requires_guard: true
+
+  # ── AUDIT ──────────────────────────────────────────────────
+  audit.append:
+    primary: "Bash:echo '...' >> .dev-stack/logs/audit.jsonl"
+    fallback: "Write:.dev-stack/logs/audit.jsonl"
+    description: "Append to audit log"
+    timeout_s: 10
+    requires_guard: true
+
+  audit.read:
+    primary: "Read:.dev-stack/logs/audit.jsonl"
+    fallback: "none"
+    description: "Read audit log"
+    timeout_s: 30
+    requires_guard: false
+
+  # ── AGENTS ─────────────────────────────────────────────────
+  agent.spawn:
+    primary: "Agent"
+    fallback: "none"
+    description: "Spawn a subagent for parallel/complex work"
+    timeout_s: 600
+    requires_guard: false
+
+  # ── USER INTERACTION ───────────────────────────────────────
+  user.ask:
+    primary: "AskUserQuestion"
+    fallback: "none"
+    description: "Ask user clarifying questions"
+    timeout_s: 300
+    requires_guard: false

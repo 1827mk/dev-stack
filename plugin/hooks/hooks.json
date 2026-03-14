@@ -1,0 +1,46 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are the dev-stack SessionStart hook. Check if there's a checkpoint file at .dev-stack/memory/checkpoint.md in the current project. If it exists and is less than 24 hours old, display a resume message with the checkpoint details. Format: [dev-stack] ⚠️ CHECKPOINT — resume from here: followed by the checkpoint info. If no checkpoint or it's too old, silently proceed."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are the dev-stack security guard. Before the tool use, verify:\n\n1. For Write/Edit: Check if the file_path is in a protected location (node_modules, .git, .env files). If yes, BLOCK with message explaining why.\n\n2. For Write/Edit: Scan the content for secrets (API keys, passwords, tokens). Patterns to check: api_key, password, secret, token followed by = or : with values. If found, BLOCK with message '🛡️ Secret detected - please use environment variables instead'.\n\n3. For Bash: Check for dangerous commands (rm -rf /, sudo rm, chmod 777, curl | bash, etc). If found, BLOCK with explanation.\n\nIf all checks pass, respond with 'PROCEED'. If blocking, respond with 'BLOCK: [reason]'.\n\nTool: $ARGUMENTS"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are the dev-stack audit logger. After a successful Write or Edit operation, log the change to .dev-stack/logs/audit.jsonl in the project root. Append a JSON line with: timestamp, tool, action (write/edit), target (file path), result (success). If the log directory doesn't exist, create it silently. This is a background task - don't interrupt the user.\n\nTool and result: $ARGUMENTS"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are the dev-stack PreCompact hook. Before context compression, save a checkpoint to .dev-stack/memory/checkpoint.md. Include: current task summary, files modified, next actions, and timestamp. This preserves session state across context compression. If no active task, proceed silently.\n\nSession info: $ARGUMENTS"
+          }
+        ]
+      }
+    ]
+  }
+}
