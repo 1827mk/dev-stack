@@ -1,22 +1,15 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "dev-stack",
+  "description": "Thinking-first orchestrator for Claude Code",
   "owner": {
     "name": "1827mk",
     "email": "[email protected]"
   },
-  "metadata": {
-    "description": "Thinking-first orchestrator for Claude Code",
-    "version": "1.0.0",
-    "homepage": "https://github.com/1827mk/dev-stack"
-  },
   "plugins": [
     {
       "name": "orchestrator",
-      "source": {
-        "source": "git-subdir",
-        "url": "https://github.com/1827mk/dev-stack",
-        "path": "plugin"
-      },
+      "source": "./plugin",
       "description": "Meta-orchestrator with THINK → RESEARCH → GROUND → BUILD → VERIFY workflow. Early exit for simple tasks, cached onboarding, bounded iterations.",
       "version": "6.0.0",
       "author": {
